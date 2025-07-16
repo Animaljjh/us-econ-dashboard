@@ -1,0 +1,33 @@
+{
+  "name": "us-econ-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "main": "index.js",
+  "keywords": [
+    "nextjs",
+    "dashboard",
+    "economy",
+    "plotly",
+    "react"
+  ],
+  "author": "",
+  "license": "ISC",
+  "description": "US Economic Dashboard with Plotly and React",
+  "dependencies": {
+    "date-fns": "^4.1.0",
+    "next": "^12.3.7",
+    "papaparse": "^5.5.3",
+    "plotly.js": "^3.0.1",
+    "react": "^18.3.1",
+    "react-datepicker": "^4.25.0",
+    "react-dom": "^18.3.1",
+    "react-plotly.js": "^2.6.0",
+    "simple-statistics": "^7.8.8"
+  }
+}
