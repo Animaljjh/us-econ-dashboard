@@ -117,7 +117,7 @@ const cycles = {
 };
 
 // 🟢 Plot 컴포넌트를 별도로 정의
-function IndicatorPlot({ series, filtered, fixedLines, activeColor, comparePanel, handlePlotClick, handlePlotClickErase, isNewsActive, handleNewsClick }) {
+function IndicatorPlot({ series, filtered, fixedLines, activeColor, comparePanel, handlePlotClick, handlePlotClickErase, isNewsActive, handleNewsClick, noteSelectMode, handleNoteClick, startDate, endDate, xRange, setXRange }) {
   // 각 Plot 마다 임시 선 상태를 관리
   const [localTempLineX, setLocalTempLineX] = useState(null);
 
@@ -155,20 +155,44 @@ function IndicatorPlot({ series, filtered, fixedLines, activeColor, comparePanel
         paper_bgcolor: '#111',
         font: { color: '#fff' },
         shapes: shapes,
-        xaxis: { showgrid: false },
+        xaxis: {
+          showgrid: false,
+          range: xRange || [
+            new Date(startDate).toISOString().split('T')[0],
+            new Date(endDate).toISOString().split('T')[0]
+          ]
+        },
         yaxis: { showgrid: false },
-        hovermode: 'x unified'
+        hovermode: 'x unified',
+        uirevision: series
       }}
       useResizeHandler
       style={{ width: '100%' }}
-      onHover={e => { if (comparePanel && activeColor && activeColor !== 'eraser') { setLocalTempLineX(e.points[0].x); } }}
+      onRelayout={(event) => {
+        if (event['xaxis.autorange']) {
+          // 🔥 더블클릭으로 줌 리셋 → 이 그래프의 xRange 초기화
+          setXRange(null);
+        } else if (event['xaxis.range[0]'] && event['xaxis.range[1]']) {
+          // 🔥 일반적인 줌 → xRange 저장
+          setXRange([event['xaxis.range[0]'], event['xaxis.range[1]']]);
+        }
+      }}
+      onHover={e => {
+        if (comparePanel && activeColor && activeColor !== 'eraser') {
+          setLocalTempLineX(e.points[0].x);
+        }
+      }}
       onUnhover={() => setLocalTempLineX(null)}
       onClick={e => {
+        if (noteSelectMode) {
+          handleNoteClick(e.points[0].x, series);
+          return;
+        }
         if (comparePanel) {
           if (activeColor === 'eraser') { handlePlotClickErase(e); }
           else if (activeColor) { handlePlotClick(e); }
         }
-        if (isNewsActive && !comparePanel) {
+        if (isNewsActive) {
           handleNewsClick(e.points[0].x, series);
         }
       }}
@@ -186,14 +210,84 @@ export default function Home() {
 
   const [startDate, setStartDate] = useState(new Date('2006-01-01'));
   const [endDate, setEndDate] = useState(new Date('2012-12-31'));
+  const [xRanges, setXRanges] = useState({});
   const [startStep, setStartStep] = useState('year');
   const [endStep, setEndStep] = useState('year');
   const startPickerRef = useRef(null);
   const endPickerRef = useRef(null);
 
   const [comparePanel, setComparePanel] = useState(false);
+  const [noteSelectMode, setNoteSelectMode] = useState(false);
   const [activeColor, setActiveColor] = useState(null);
-  const [fixedLines, setFixedLines] = useState([]);
+  const [fixedLines, setFixedLines] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('fixedLines');
+      return saved ? JSON.parse(saved) : [];
+    }
+    return [];
+  });
+  // ✅ 모든 지표에서 공통 날짜 범위를 계산해서 globalDates로 저장
+  const [globalDates, setGlobalDates] = useState([]);
+
+  useEffect(() => {
+    const savedStartDate = localStorage.getItem('startDate');
+    if (savedStartDate) setStartDate(new Date(savedStartDate));
+
+    const savedEndDate = localStorage.getItem('endDate');
+    if (savedEndDate) setEndDate(new Date(savedEndDate));
+
+    const savedFilterMode = localStorage.getItem('filterMode');
+    if (savedFilterMode) setFilterMode(savedFilterMode);
+
+    const savedComparePanel = localStorage.getItem('comparePanel');
+    if (savedComparePanel) setComparePanel(JSON.parse(savedComparePanel));
+
+    const savedNoteSelectMode = localStorage.getItem('noteSelectMode');
+    if (savedNoteSelectMode) setNoteSelectMode(JSON.parse(savedNoteSelectMode));
+
+    const savedSelectedIndicators = localStorage.getItem('selectedIndicators');
+    if (savedSelectedIndicators) setSelectedIndicators(JSON.parse(savedSelectedIndicators));
+  }, []);
+
+  // ✅ 상태 변경 시 로컬스토리지에 저장
+  useEffect(() => {
+    localStorage.setItem('startDate', startDate.toISOString());
+  }, [startDate]);
+
+  useEffect(() => {
+    localStorage.setItem('endDate', endDate.toISOString());
+  }, [endDate]);
+
+  useEffect(() => {
+    localStorage.setItem('filterMode', filterMode);
+  }, [filterMode]);
+
+  useEffect(() => {
+    localStorage.setItem('comparePanel', JSON.stringify(comparePanel));
+  }, [comparePanel]);
+
+  useEffect(() => {
+    localStorage.setItem('noteSelectMode', JSON.stringify(noteSelectMode));
+  }, [noteSelectMode]);
+
+  useEffect(() => {
+    localStorage.setItem('selectedIndicators', JSON.stringify(selectedIndicators));
+  }, [selectedIndicators]);
+
+
+  useEffect(() => {
+    if (!data || Object.keys(data).length === 0) return;
+
+    let allDates = [];
+    Object.values(data).forEach(arr => {
+      allDates = allDates.concat(arr.map(d => d.date));
+    });
+
+    // 중복 제거 후 정렬
+    allDates = [...new Set(allDates)].sort((a, b) => new Date(a) - new Date(b));
+    setGlobalDates(allDates);
+  }, [data]);
+
 
   const colorOptions = [
     { name: 'blue', code: '#00f' },
@@ -202,6 +296,7 @@ export default function Home() {
     { name: 'green', code: '#0f0' }
   ];
 
+  // 1) 데이터 fetch
   useEffect(() => {
     const fetchAllCSVs = async () => {
       const newData = {};
@@ -212,7 +307,10 @@ export default function Home() {
           const txt = await res.text();
           const parsed = Papa.parse(txt, { header: true, skipEmptyLines: true });
           const cleaned = parsed.data
-            .map(d => ({ date: d.date, value: parseFloat(d.value) }))
+            .map(d => ({
+              date: new Date(d.date).toISOString().split('T')[0], // ✅ 날짜를 UTC ISO로 통일
+              value: parseFloat(d.value)
+            }))
             .filter(d => !isNaN(d.value));
           newData[series] = cleaned;
         } catch (e) {
@@ -223,6 +321,20 @@ export default function Home() {
     };
     fetchAllCSVs();
   }, []);
+
+  // 2) fixedLines가 바뀔 때마다 저장
+  useEffect(() => {
+    localStorage.setItem('fixedLines', JSON.stringify(fixedLines));
+  }, [fixedLines]);
+
+  // 3) 첫 로드 시 기존 기둥 불러오기
+  useEffect(() => {
+    const saved = localStorage.getItem('fixedLines');
+    if (saved) {
+      setFixedLines(JSON.parse(saved));
+    }
+  }, []);
+
 
   const handleStartChange = (date) => {
     if (startStep === 'year') {
@@ -292,7 +404,10 @@ export default function Home() {
       alert('하나 이상 선택하세요!');
       return;
     }
-    router.push(`/custom?indicators=${selectedIndicators.map(encodeURIComponent).join(',')}`);
+    const start = startDate.toISOString().split('T')[0];
+    const end = endDate.toISOString().split('T')[0];
+    const url = `/custom?indicators=${selectedIndicators.map(encodeURIComponent).join(',')}&start=${start}&end=${end}`;
+    window.open(url, '_blank');   // 🔥 새탭으로 열기
   };
 
   const handleColorClick = (color) => {
@@ -305,21 +420,83 @@ export default function Home() {
     }
   };
 
-  const handlePlotClick = (e) => {
-    if (!activeColor || activeColor === 'eraser') return;
-    const xValue = new Date(e.points[0].x).toISOString(); // 날짜를 ISO 문자열로
-    setFixedLines(prev => [...prev, { x: xValue, color: activeColor }]);
+  const handleNoteClick = (dateValue, series) => {
+    const isoDate = new Date(dateValue).toISOString().split('T')[0];
+    const mode = localStorage.getItem('currentMode') || filterMode;
+
+    // 🔎 fixedLines에서 날짜 색상 찾기
+    const foundBar = fixedLines.find(l => {
+      const cleanX = l.x.includes('T') ? l.x.split('T')[0] : l.x;
+      return cleanX === isoDate;
+    });
+
+    if (!foundBar) {
+      alert('기둥을 먼저 선택하세요!');
+      return;
+    }
+
+    // ✅ 현재 모드의 지표 리스트 불러오기
+    const currentIndicators =
+      JSON.parse(localStorage.getItem('currentIndicators')) ||
+      Object.values(mode === 'sector' ? sectors : cycles).flat();
+
+    // ✅ 현재 데이터에서 값 추출 (없으면 직전값)
+    const row = {};
+    currentIndicators.forEach(ind => {
+      const arr = data[ind] || [];
+      let found = arr.find(d => d.date.startsWith(isoDate));
+      if (!found) {
+        const past = arr.filter(d => new Date(d.date) < new Date(isoDate));
+        if (past.length > 0) {
+          past.sort((a, b) => new Date(b.date) - new Date(a.date));
+          found = past[0];
+        }
+      }
+      row[ind] = found ? found.value : '';
+    });
+
+    // 🔥 기존 저장된 matrix 불러오기
+    const matrixKey = `noteMatrix_${mode}`;
+    const currentMatrix = JSON.parse(localStorage.getItem(matrixKey)) || {};
+
+    // 🔥 색과 clickedIndicator를 반영한 새로운 matrix
+    const updatedMatrix = {
+      ...currentMatrix,
+      [isoDate]: {
+        ...(currentMatrix[isoDate] || {}),
+        color:
+          foundBar.color === 'blue' ? '#00f' :
+            foundBar.color === 'red' ? '#f00' :
+              foundBar.color === 'yellow' ? '#ff0' :
+                foundBar.color === 'green' ? '#0f0' : '#fff',
+        clickedIndicator: series,
+        indicators: {
+          ...(currentMatrix[isoDate]?.indicators || {}),
+          ...row
+        },
+        memo: currentMatrix[isoDate]?.memo || ''
+      }
+    };
+
+    // ✅ 임시로 sessionStorage에만 반영 (NotePage에서 우선 읽도록)
+    sessionStorage.setItem(matrixKey, JSON.stringify(updatedMatrix));
+
+    // 👉 노트 페이지 열기
+    window.open(`/note?date=${isoDate}&series=${encodeURIComponent(series)}`, '_blank');
   };
 
+
+
+
   const handlePlotClickErase = (e) => {
-    const xValue = new Date(e.points[0].x).toISOString(); // 날짜를 ISO 문자열로
+    const xValue = e.points[0].x.includes('T') ? e.points[0].x.split('T')[0] : e.points[0].x;
     setFixedLines(prev => prev.filter(l => l.x !== xValue));
   };
 
   const handleNewsClick = (xValue, series) => {
     const clickedDate = new Date(xValue);
 
-    // 🔥 앞뒤 7일 범위
+    // 🔥 앞뒤 4일 범위
     const minDateObj = new Date(clickedDate);
     minDateObj.setDate(minDateObj.getDate() - 4);
 
@@ -335,6 +512,20 @@ export default function Home() {
     setNewsMode(null);
   };
 
+  // ✅ 플롯 클릭 시 기둥 추가
+  const handlePlotClick = (e, seriesData, series) => {
+    if (!activeColor || activeColor === 'eraser') return;
+
+    // 현재 모드를 저장 (sector/cycle/custom 구분)
+    localStorage.setItem('currentMode', filterMode);
+
+    const isoDate = e.points[0].x.includes('T') ? e.points[0].x.split('T')[0] : e.points[0].x;
+    setFixedLines(prev => [...prev, { x: isoDate, color: activeColor }]);
+    const valueAtDate = seriesData.find(d => d.date.startsWith(isoDate))?.value ?? '';
+
+  };
+
+
   const toggleComparePanel = () => {
     if (comparePanel) {
       setActiveColor(null);
@@ -347,6 +538,22 @@ export default function Home() {
   return (
     <div style={{ padding: 20, background: '#111', color: '#fff', minHeight: '100vh' }}>
       <h1 style={{ fontSize: 32, fontWeight: 'bold', marginBottom: 20 }}>US Economic Dashboard</h1>
+
+      <button
+        onClick={() => window.open('/note', '_blank')}
+        style={{
+          marginBottom: '20px',
+          padding: '10px 20px',
+          background: '#0a84ff',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '6px',
+          fontWeight: 'bold',
+          cursor: 'pointer'
+        }}
+      >
+        📒 노트 보기
+      </button>
 
       <div style={{ display: 'flex', gap: 40, marginBottom: 20 }}>
         <div>
@@ -387,7 +594,13 @@ export default function Home() {
 
       <div style={{ marginTop: 20 }}>
         <button onClick={() => setFilterPanel(!filterPanel)} style={{ padding: '10px 20px', fontWeight: 'bold', background: '#444', color: '#fff', border: 'none', borderRadius: '6px' }}>Filter</button>
-        <button onClick={() => router.push('/correlation')} style={{ padding: '10px 20px', fontWeight: 'bold', marginLeft: '10px', background: '#444', color: '#fff', border: 'none', borderRadius: '6px' }}>Correlation Matrix</button>
+        <button
+          onClick={() => window.open('/correlation', '_blank')}
+          style={{ padding: '10px 20px', fontWeight: 'bold', marginLeft: '10px', background: '#444', color: '#fff', border: 'none', borderRadius: '6px' }}
+        >
+          Correlation Matrix
+        </button>
+
         <button onClick={goToCustom} style={{ padding: '10px 20px', fontWeight: 'bold', marginLeft: '10px', background: '#444', color: '#fff', border: 'none', borderRadius: '6px' }}>Custom</button>
         <button onClick={toggleComparePanel} style={{ padding: '10px 20px', fontWeight: 'bold', marginLeft: '10px', background: '#444', color: '#fff', border: 'none', borderRadius: '6px' }}>Compare</button>
       </div>
@@ -396,7 +609,10 @@ export default function Home() {
         <div style={{ marginTop: 10, padding: 10, background: '#222', borderRadius: '6px', display: 'flex', gap: '10px', alignItems: 'center' }}>
           {colorOptions.map(c => (
             <div key={c.name}
-              onClick={() => handleColorClick(c.name)}
+              onClick={() => {
+                handleColorClick(c.name);
+                setNoteSelectMode(false); // 🎯 다른 버튼 클릭 시 마우스 모드 끄기
+              }}
               style={{
                 width: 30, height: 30, borderRadius: '50%',
                 background: c.code,
@@ -405,8 +621,12 @@ export default function Home() {
               }}
             />
           ))}
+
           <div
-            onClick={() => setActiveColor('eraser')}
+            onClick={() => {
+              setActiveColor('eraser');
+              setNoteSelectMode(false); // 🎯 eraser 선택 시 마우스 모드 끄기
+            }}
             style={{
               width: 30, height: 30, borderRadius: '6px', background: '#888',
               border: activeColor === 'eraser' ? '3px solid white' : '2px solid gray',
@@ -414,14 +634,33 @@ export default function Home() {
               color: '#000', fontWeight: 'bold', cursor: 'pointer'
             }}
           >X</div>
+
           <button
-            onClick={() => setFixedLines([])}
+            onClick={() => {
+              setFixedLines([]);
+              setNoteSelectMode(false); // 🎯 모두삭제 클릭 시 마우스 모드 끄기
+            }}
             style={{
               marginLeft: '20px', padding: '6px 12px',
               background: '#a00', color: '#fff', border: 'none',
               borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold'
             }}
           >모두 삭제</button>
+
+          <button
+            onClick={() => setNoteSelectMode(!noteSelectMode)}
+            style={{
+              marginLeft: '10px',
+              padding: '10px 20px',
+              fontWeight: 'bold',
+              background: noteSelectMode ? '#00f' : '#444',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px'
+            }}
+          >
+            🖱️
+          </button>
         </div>
       )}
 
@@ -483,10 +722,21 @@ export default function Home() {
                     fixedLines={fixedLines}
                     activeColor={activeColor}
                     comparePanel={comparePanel}
-                    handlePlotClick={handlePlotClick}
+                    handlePlotClick={(e) => handlePlotClick(e, filtered, series)}
                     handlePlotClickErase={handlePlotClickErase}
                     isNewsActive={isNewsActive}
                     handleNewsClick={handleNewsClick}
+                    noteSelectMode={noteSelectMode}           // ✅ 추가
+                    handleNoteClick={handleNoteClick}
+                    startDate={startDate}     // ✅ 추가
+                    endDate={endDate}
+                    xRange={xRanges[series] || null}
+                    setXRange={(range) => {
+                      setXRanges(prev => ({
+                        ...prev,
+                        [series]: range
+                      }));
+                    }}
                   />
                 )}
               </div>
@@ -497,3 +747,4 @@ export default function Home() {
     </div>
   );
 }
+

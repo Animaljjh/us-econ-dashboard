@@ -62,6 +62,15 @@ export default function CustomPage() {
   const [data, setData] = useState({});
   const [startDate, setStartDate] = useState('1900-01-01');
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+  useEffect(() => {
+    if (!router.isReady) return;
+    if (router.query.start) {
+      setStartDate(router.query.start);
+    }
+    if (router.query.end) {
+      setEndDate(router.query.end);
+    }
+  }, [router.isReady, router.query.start, router.query.end]);
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -134,7 +143,7 @@ export default function CustomPage() {
       </div>
 
       <div>
-        {['1W','1M','6M','1Y','2Y','5Y','10Y','25Y','ALL'].map(p => (
+        {['1W', '1M', '6M', '1Y', '2Y', '5Y', '10Y', '25Y', 'ALL'].map(p => (
           <button key={p} onClick={() => handleQuickFilter(p)} style={{ margin: '5px', padding: '5px 10px' }}>
             {p}
           </button>

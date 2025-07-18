@@ -1,3 +1,8 @@
-node_modules/
+# 빌드 결과물과 캐시 폴더 무시
 .next/
+
+# 노드 모듈 무시
+node_modules/
+
+# 맥에서 자동생성되는 파일 무시
 .DS_Store
