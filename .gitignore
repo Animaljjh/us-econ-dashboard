@@ -1,8 +1,18 @@
-# 빌드 결과물과 캐시 폴더 무시
-.next/
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
 
-# 노드 모듈 무시
-node_modules/
+# next.js
+/.next/
+/out/
 
-# 맥에서 자동생성되는 파일 무시
+# production
+/build
+
+# misc
 .DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
