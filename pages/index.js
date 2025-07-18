@@ -244,7 +244,7 @@ export default function Home() {
     if (savedFilterMode) setFilterMode(savedFilterMode);
 
     const savedcolumnPanel = localStorage.getItem('columnPanel');
-    if (savedcolumnPanel) setColumnPanel(JSON.parse(savedcolumnPanel));
+    if (savedcolumnPanel) setcolumnPanel(JSON.parse(savedcolumnPanel));
 
     const savedNoteSelectMode = localStorage.getItem('noteSelectMode');
     if (savedNoteSelectMode) setNoteSelectMode(JSON.parse(savedNoteSelectMode));
