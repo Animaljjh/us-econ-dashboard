@@ -93,18 +93,18 @@ function resampleMonthly(seriesData, method = 'last') {
 
 // ✅ 발표 주기별 그룹
 const monthlySeries = [
-  'PCE','RSXFS','UMCSENT','CPIAUCSL','PPIACO',
-  'PERMIT','HOUST','GDP','INDPRO','DGORDER',
-  'M2SL','TOTALSL','HDTGPDUSQ163N','HHMSDODNS','MDSP','BUSLOANS'
+  'PCE', 'RSXFS', 'UMCSENT', 'CPIAUCSL', 'PPIACO',
+  'PERMIT', 'HOUST', 'GDP', 'INDPRO', 'DGORDER',
+  'M2SL', 'TOTALSL', 'HDTGPDUSQ163N', 'HHMSDODNS', 'MDSP', 'BUSLOANS'
 ];
 const weeklySeries = [
   'ICSA'
 ];
 const dailySeries = [
-  'S&P_500','NASDAQ_IXIC','Dow_Jones_DJI','VIX_Index','US_Dollar_Index_DXY',
-  'USDJPY','Bitcoin_BTCUSD','WTI_Crude_Oil','Brent_Crude_Oil','Gold','Silver',
-  'DGS2','US_10Y_Treasury_Yield_TNX','US_30Y_Treasury_Yield_TYX','US_13W_TBill_Rate_IRX',
-  'T10Y2Y','Yield_Spread_10Y_minus_13W','FEDFUNDS','DFEDTARU','PAYEMS','UNRATE'
+  'S&P_500', 'NASDAQ_IXIC', 'Dow_Jones_DJI', 'VIX_Index', 'US_Dollar_Index_DXY',
+  'USDJPY', 'Bitcoin_BTCUSD', 'WTI_Crude_Oil', 'Brent_Crude_Oil', 'Gold', 'Silver',
+  'DGS2', 'US_10Y_Treasury_Yield_TNX', 'US_30Y_Treasury_Yield_TYX', 'US_13W_TBill_Rate_IRX',
+  'T10Y2Y', 'Yield_Spread_10Y_minus_13W', 'FEDFUNDS', 'DFEDTARU', 'PAYEMS', 'UNRATE'
 ];
 
 export default function CorrelationPage() {
@@ -189,7 +189,7 @@ export default function CorrelationPage() {
       if (common === null) common = new Set(dates);
       else common = new Set([...common].filter(x => dates.includes(x)));
     });
-    const commonDates = common ? [...common].sort((a,b)=>new Date(a)-new Date(b)) : [];
+    const commonDates = common ? [...common].sort((a, b) => new Date(a) - new Date(b)) : [];
 
     const valueArrays = seriesNames.map(name => {
       const valueMap = {};
@@ -199,44 +199,45 @@ export default function CorrelationPage() {
 
     const matrix = valueArrays.map(arr1 =>
       valueArrays.map(arr2 => {
-        const paired = arr1.map((v,i)=>[v,arr2[i]]).filter(([a,b])=>a!=null && b!=null);
-        const x = paired.map(p=>p[0]);
-        const y = paired.map(p=>p[1]);
+        const paired = arr1.map((v, i) => [v, arr2[i]]).filter(([a, b]) => a != null && b != null);
+        const x = paired.map(p => p[0]);
+        const y = paired.map(p => p[1]);
         if (x.length < 2) return 0;
-        return ss.sampleCorrelation(x,y) || 0;
+        return ss.sampleCorrelation(x, y) || 0;
       })
     );
 
     const list = [];
-    for (let i=0;i<seriesNames.length;i++) {
-      for (let j=i+1;j<seriesNames.length;j++) {
+    for (let i = 0; i < seriesNames.length; i++) {
+      for (let j = i + 1; j < seriesNames.length; j++) {
         const corrValue = matrix[i][j];
         const a = seriesNames[i];
         const b = seriesNames[j];
         const aLabel = fullNames[a] ? `${fullNames[a]} (${a})` : a;
         const bLabel = fullNames[b] ? `${fullNames[b]} (${b})` : b;
-        list.push({ pair:`${a}&${b}`, description:`${aLabel} ↔ ${bLabel}`, value:corrValue });
+        list.push({ pair: `${a}&${b}`, description: `${aLabel} ↔ ${bLabel}`, value: corrValue });
       }
     }
-    list.sort((a,b)=>b.value-a.value);
+    list.sort((a, b) => b.value - a.value);
     setCorrelationMatrix(matrix);
     setSortedCorrelations(list);
   }, [data, seriesNames]);
 
   return (
-    <div style={{ padding:'20px', backgroundColor:'#111', color:'#fff', minHeight:'100vh' }}>
-      <h1>Correlation Matrix (상관관계 분석)</h1>
+    <div style={{ padding: '20px', backgroundColor: '#111', color: '#fff', minHeight: '100vh' }}>
+      <h1>Correlation Matrix</h1>
       <p>
         {indicators
-          ? `선택한 ${seriesNames.length}개 지표로 분석`
-          : `현재 모드(${filterMode})의 ${seriesNames.length}개 지표로 분석`}
+          ? `Analysis of ${seriesNames.length} selected indicators`
+          : `Analysis of ${seriesNames.length} indicators in current mode (${filterMode})`}
         {startDate && endDate && (
           <span> ({startDate.toISOString().split('T')[0]} ~ {endDate.toISOString().split('T')[0]})</span>
         )}
       </p>
 
-      <div style={{ marginBottom:20 }}>
-        <button onClick={()=>router.back()} style={{ padding:'10px 20px', marginRight:'10px' }}>← 이전 페이지로</button>
+
+      <div style={{ marginBottom: 20 }}>
+        <button onClick={() => router.back()} style={{ padding: '10px 20px', marginRight: '10px' }}>← Go Back</button>
       </div>
 
       {correlationMatrix.length > 0 && (
@@ -251,7 +252,7 @@ export default function CorrelationPage() {
             zmax: 1
           }]}
           layout={{
-            margin: { l:150, t:50 },
+            margin: { l: 150, t: 50 },
             height: 800,
             width: 1000,
             paper_bgcolor: '#111',
@@ -263,20 +264,20 @@ export default function CorrelationPage() {
       )}
 
       {sortedCorrelations.length > 0 && (
-        <div style={{ marginTop:40 }}>
-          <h2>상관계수 목록 (내림차순)</h2>
-          <table style={{ width:'100%', borderCollapse:'collapse', color:'#fff' }}>
+        <div style={{ marginTop: 40 }}>
+          <h2>Correlation coefficients List (descending order)</h2>
+          <table style={{ width: '100%', borderCollapse: 'collapse', color: '#fff' }}>
             <thead>
               <tr>
-                <th style={{ border:'1px solid #ccc', padding:'8px' }}>지표 쌍</th>
-                <th style={{ border:'1px solid #ccc', padding:'8px' }}>상관계수</th>
+                <th style={{ border: '1px solid #ccc', padding: '8px' }}>지표 쌍</th>
+                <th style={{ border: '1px solid #ccc', padding: '8px' }}>상관계수</th>
               </tr>
             </thead>
             <tbody>
-              {sortedCorrelations.map((item,idx)=>(
+              {sortedCorrelations.map((item, idx) => (
                 <tr key={idx}>
-                  <td style={{ border:'1px solid #ccc', padding:'8px' }}>{item.description}</td>
-                  <td style={{ border:'1px solid #ccc', padding:'8px' }}>{item.value.toFixed(3)}</td>
+                  <td style={{ border: '1px solid #ccc', padding: '8px' }}>{item.description}</td>
+                  <td style={{ border: '1px solid #ccc', padding: '8px' }}>{item.value.toFixed(3)}</td>
                 </tr>
               ))}
             </tbody>

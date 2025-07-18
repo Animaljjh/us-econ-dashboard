@@ -117,7 +117,7 @@ const cycles = {
 };
 
 // 🟢 Plot 컴포넌트를 별도로 정의
-function IndicatorPlot({ series, filtered, fixedLines, activeColor, comparePanel, handlePlotClick, handlePlotClickErase, isNewsActive, handleNewsClick, noteSelectMode, handleNoteClick, startDate, endDate, xRange, setXRange }) {
+function IndicatorPlot({ series, filtered, fixedLines, activeColor, columnPanel, handlePlotClick, handlePlotClickErase, isNewsActive, handleNewsClick, noteSelectMode, handleNoteClick, startDate, endDate, xRange, setXRange }) {
   // 각 Plot 마다 임시 선 상태를 관리
   const [localTempLineX, setLocalTempLineX] = useState(null);
 
@@ -178,7 +178,7 @@ function IndicatorPlot({ series, filtered, fixedLines, activeColor, comparePanel
         }
       }}
       onHover={e => {
-        if (comparePanel && activeColor && activeColor !== 'eraser') {
+        if (columnPanel && activeColor && activeColor !== 'eraser') {
           setLocalTempLineX(e.points[0].x);
         }
       }}
@@ -188,7 +188,7 @@ function IndicatorPlot({ series, filtered, fixedLines, activeColor, comparePanel
           handleNoteClick(e.points[0].x, series);
           return;
         }
-        if (comparePanel) {
+        if (columnPanel) {
           if (activeColor === 'eraser') { handlePlotClickErase(e); }
           else if (activeColor) { handlePlotClick(e); }
         }
@@ -216,7 +216,7 @@ export default function Home() {
   const startPickerRef = useRef(null);
   const endPickerRef = useRef(null);
 
-  const [comparePanel, setComparePanel] = useState(false);
+  const [columnPanel, setcolumnPanel] = useState(false);
   const [noteSelectMode, setNoteSelectMode] = useState(false);
   const [activeColor, setActiveColor] = useState(null);
   const [fixedLines, setFixedLines] = useState(() => {
@@ -226,6 +226,10 @@ export default function Home() {
     }
     return [];
   });
+  const resetTotalValue = (callback) => {
+    setNoteSelectMode(false);
+    if (callback) callback();
+  };
   // ✅ 모든 지표에서 공통 날짜 범위를 계산해서 globalDates로 저장
   const [globalDates, setGlobalDates] = useState([]);
 
@@ -239,8 +243,8 @@ export default function Home() {
     const savedFilterMode = localStorage.getItem('filterMode');
     if (savedFilterMode) setFilterMode(savedFilterMode);
 
-    const savedComparePanel = localStorage.getItem('comparePanel');
-    if (savedComparePanel) setComparePanel(JSON.parse(savedComparePanel));
+    const savedcolumnPanel = localStorage.getItem('columnPanel');
+    if (savedcolumnPanel) setColumnPanel(JSON.parse(savedcolumnPanel));
 
     const savedNoteSelectMode = localStorage.getItem('noteSelectMode');
     if (savedNoteSelectMode) setNoteSelectMode(JSON.parse(savedNoteSelectMode));
@@ -263,8 +267,8 @@ export default function Home() {
   }, [filterMode]);
 
   useEffect(() => {
-    localStorage.setItem('comparePanel', JSON.stringify(comparePanel));
-  }, [comparePanel]);
+    localStorage.setItem('columnPanel', JSON.stringify(columnPanel));
+  }, [columnPanel]);
 
   useEffect(() => {
     localStorage.setItem('noteSelectMode', JSON.stringify(noteSelectMode));
@@ -401,7 +405,7 @@ export default function Home() {
 
   const goToCustom = () => {
     if (selectedIndicators.length === 0) {
-      alert('하나 이상 선택하세요!');
+      alert('Choose an indicator!');
       return;
     }
     const start = startDate.toISOString().split('T')[0];
@@ -421,8 +425,10 @@ export default function Home() {
   };
 
   const handleNoteClick = (dateValue, series) => {
+    // 현재 모드(sector/cycle/custom)를 기록해준다
+    localStorage.setItem('currentMode', filterMode);
     const isoDate = new Date(dateValue).toISOString().split('T')[0];
-    const mode = localStorage.getItem('currentMode') || filterMode;
+    const mode = filterMode; // 위에서 이미 저장했고, 지금 상태를 바로 사용
 
     // 🔎 fixedLines에서 날짜 색상 찾기
     const foundBar = fixedLines.find(l => {
@@ -431,7 +437,7 @@ export default function Home() {
     });
 
     if (!foundBar) {
-      alert('기둥을 먼저 선택하세요!');
+      alert('Choose a pillar!');
       return;
     }
 
@@ -526,11 +532,11 @@ export default function Home() {
   };
 
 
-  const toggleComparePanel = () => {
-    if (comparePanel) {
+  const togglecolumnPanel = () => {
+    if (columnPanel) {
       setActiveColor(null);
     }
-    setComparePanel(!comparePanel);
+    setcolumnPanel(!columnPanel);
   };
 
   const currentGroups = filterMode === 'sector' ? sectors : cycles;
@@ -552,12 +558,12 @@ export default function Home() {
           cursor: 'pointer'
         }}
       >
-        📒 노트 보기
+        📒 Note
       </button>
 
       <div style={{ display: 'flex', gap: 40, marginBottom: 20 }}>
         <div>
-          <h4>시작일</h4>
+          <h4>Start date</h4>
           <DatePicker
             ref={startPickerRef}
             selected={startDate}
@@ -569,7 +575,7 @@ export default function Home() {
           />
         </div>
         <div>
-          <h4>종료일</h4>
+          <h4>End date</h4>
           <DatePicker
             ref={endPickerRef}
             selected={endDate}
@@ -593,19 +599,19 @@ export default function Home() {
       </div>
 
       <div style={{ marginTop: 20 }}>
-        <button onClick={() => setFilterPanel(!filterPanel)} style={{ padding: '10px 20px', fontWeight: 'bold', background: '#444', color: '#fff', border: 'none', borderRadius: '6px' }}>Filter</button>
+        <button onClick={() => { setFilterPanel(!filterPanel); setNoteSelectMode(false); }} style={{ padding: '10px 20px', fontWeight: 'bold', background: '#444', color: '#fff', border: 'none', borderRadius: '6px' }}>Filter</button>
         <button
-          onClick={() => window.open('/correlation', '_blank')}
+          onClick={() => { setNoteSelectMode(false); window.open('/correlation', '_blank'); }}
           style={{ padding: '10px 20px', fontWeight: 'bold', marginLeft: '10px', background: '#444', color: '#fff', border: 'none', borderRadius: '6px' }}
         >
           Correlation Matrix
         </button>
 
-        <button onClick={goToCustom} style={{ padding: '10px 20px', fontWeight: 'bold', marginLeft: '10px', background: '#444', color: '#fff', border: 'none', borderRadius: '6px' }}>Custom</button>
-        <button onClick={toggleComparePanel} style={{ padding: '10px 20px', fontWeight: 'bold', marginLeft: '10px', background: '#444', color: '#fff', border: 'none', borderRadius: '6px' }}>Compare</button>
+        <button onClick={() => { setNoteSelectMode(false); goToCustom(); }} style={{ padding: '10px 20px', fontWeight: 'bold', marginLeft: '10px', background: '#444', color: '#fff', border: 'none', borderRadius: '6px' }}>Custom</button>
+        <button onClick={() => { setNoteSelectMode(false); togglecolumnPanel(); }} style={{ padding: '10px 20px', fontWeight: 'bold', marginLeft: '10px', background: '#444', color: '#fff', border: 'none', borderRadius: '6px' }}>Column</button>
       </div>
 
-      {comparePanel && (
+      {columnPanel && (
         <div style={{ marginTop: 10, padding: 10, background: '#222', borderRadius: '6px', display: 'flex', gap: '10px', alignItems: 'center' }}>
           {colorOptions.map(c => (
             <div key={c.name}
@@ -633,7 +639,7 @@ export default function Home() {
               display: 'flex', justifyContent: 'center', alignItems: 'center',
               color: '#000', fontWeight: 'bold', cursor: 'pointer'
             }}
-          >X</div>
+          >x</div>
 
           <button
             onClick={() => {
@@ -645,7 +651,7 @@ export default function Home() {
               background: '#a00', color: '#fff', border: 'none',
               borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold'
             }}
-          >모두 삭제</button>
+          >delete all</button>
 
           <button
             onClick={() => setNoteSelectMode(!noteSelectMode)}
@@ -659,14 +665,14 @@ export default function Home() {
               borderRadius: '6px'
             }}
           >
-            🖱️
+            Note
           </button>
         </div>
       )}
 
       {filterPanel && (
         <div style={{ marginTop: 20, padding: 10, background: '#222', borderRadius: '6px' }}>
-          <p>모드를 선택하세요:</p>
+          <p>Choose a mode</p>
           <button
             onClick={() => { setFilterMode('sector'); setFilterPanel(false); }}
             style={{ marginRight: 10, padding: '8px 16px', background: '#555', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
@@ -705,7 +711,7 @@ export default function Home() {
                   </div>
                   <h3 style={{ margin: 0 }}>{fullNames[series] || series}</h3>
                   <button
-                    onClick={() => setNewsMode(isNewsActive ? null : series)}
+                    onClick={() => resetTotalValue(() => setNewsMode(isNewsActive ? null : series))}
                     style={{
                       marginLeft: '8px', padding: '4px 8px', cursor: 'pointer',
                       background: isNewsActive ? '#007bff' : '#444',
@@ -721,7 +727,7 @@ export default function Home() {
                     filtered={filtered}
                     fixedLines={fixedLines}
                     activeColor={activeColor}
-                    comparePanel={comparePanel}
+                    columnPanel={columnPanel}
                     handlePlotClick={(e) => handlePlotClick(e, filtered, series)}
                     handlePlotClickErase={handlePlotClickErase}
                     isNewsActive={isNewsActive}

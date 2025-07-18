@@ -119,7 +119,7 @@ export default function CustomPage() {
 
   const goToCorrelation = () => {
     if (selected.length === 0) {
-      alert('선택된 지표가 없습니다!');
+      alert('Choose an indicator!');
       return;
     }
     router.push(`/correlation?indicators=${selected.map(encodeURIComponent).join(',')}`);
@@ -127,10 +127,10 @@ export default function CustomPage() {
 
   return (
     <div style={{ padding: 20, background: '#111', color: '#fff', minHeight: '100vh' }}>
-      <h1>선택한 지표 모아서 보기</h1>
+      <h1>Selected Indicator</h1>
       <div style={{ marginBottom: 20 }}>
         <button onClick={() => router.push('/')} style={{ padding: '10px 20px', marginRight: '10px' }}>
-          Index로 돌아가기
+          Index
         </button>
         <button onClick={goToCorrelation} style={{ padding: '10px 20px' }}>
           Correlation Matrix

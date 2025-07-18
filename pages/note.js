@@ -16,24 +16,24 @@ export default function NotePage() {
 
 
     useEffect(() => {
-    const savedMode = localStorage.getItem('currentMode') || 'sector';
-    setMode(savedMode);
+        const savedMode = localStorage.getItem('currentMode') || 'sector';
+        setMode(savedMode);
 
-    const savedIndicators = JSON.parse(localStorage.getItem(`noteIndicators_${savedMode}`)) || [];
-    setIndicators(savedIndicators);
+        const savedIndicators = JSON.parse(localStorage.getItem(`noteIndicators_${savedMode}`)) || [];
+        setIndicators(savedIndicators);
 
-    const savedDates = JSON.parse(localStorage.getItem(`noteDates_${savedMode}`)) || [];
-    setDates(savedDates);
+        const savedDates = JSON.parse(localStorage.getItem(`noteDates_${savedMode}`)) || [];
+        setDates(savedDates);
 
-    // 🔥 sessionStorage에 임시 matrix가 있으면 그걸 우선 사용
-    const sessionMatrix = sessionStorage.getItem(`noteMatrix_${savedMode}`);
-    if (sessionMatrix) {
-        setMatrix(JSON.parse(sessionMatrix));
-    } else {
-        const savedMatrix = JSON.parse(localStorage.getItem(`noteMatrix_${savedMode}`)) || {};
-        setMatrix(savedMatrix);
-    }
-}, []);
+        // 🔥 sessionStorage에 임시 matrix가 있으면 그걸 우선 사용
+        const sessionMatrix = sessionStorage.getItem(`noteMatrix_${savedMode}`);
+        if (sessionMatrix) {
+            setMatrix(JSON.parse(sessionMatrix));
+        } else {
+            const savedMatrix = JSON.parse(localStorage.getItem(`noteMatrix_${savedMode}`)) || {};
+            setMatrix(savedMatrix);
+        }
+    }, []);
 
 
     // ✅ router.query.date 는 별도로 관리 (단순히 보기용)
@@ -234,7 +234,7 @@ export default function NotePage() {
                         color: '#fff',
                     }}
                 >
-                    저장하기
+                    Save
                 </button>
                 <button
                     onClick={handleDelete}
@@ -246,7 +246,7 @@ export default function NotePage() {
                         color: '#fff',
                     }}
                 >
-                    선택 날짜 삭제
+                    Delete Date
                 </button>
                 <button
                     onClick={() => router.push('/')}
@@ -258,7 +258,7 @@ export default function NotePage() {
                         color: '#fff',
                     }}
                 >
-                    돌아가기
+                    Go Back
                 </button>
             </div>
 
@@ -351,18 +351,6 @@ export default function NotePage() {
                                     />
                                     <div style={{ marginTop: '4px', display: 'flex', gap: '10px' }}>
                                         <button
-                                            onClick={() => handleMemoDelete(activeDate)}
-                                            style={{
-                                                background: '#a00',
-                                                color: '#fff',
-                                                border: 'none',
-                                                borderRadius: '4px',
-                                                padding: '4px 8px',
-                                            }}
-                                        >
-                                            메모 삭제
-                                        </button>
-                                        <button
                                             onClick={handleMemoSave}
                                             style={{
                                                 background: '#007bff',
@@ -372,7 +360,19 @@ export default function NotePage() {
                                                 padding: '4px 8px',
                                             }}
                                         >
-                                            메모 저장
+                                            save memo
+                                        </button>
+                                        <button
+                                            onClick={() => handleMemoDelete(activeDate)}
+                                            style={{
+                                                background: '#a00',
+                                                color: '#fff',
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                                padding: '4px 8px',
+                                            }}
+                                        >
+                                            delete memo
                                         </button>
                                     </div>
                                 </td>
@@ -381,7 +381,7 @@ export default function NotePage() {
                     </table>
                 </div>
             ) : (
-                <p style={{ marginBottom: '40px' }}>선택된 기둥이 없습니다.</p>
+                <p style={{ marginBottom: '40px' }}>No selected date.</p>
             )}
 
             {/* sector cycle custom 버튼 */}
@@ -406,9 +406,9 @@ export default function NotePage() {
 
             {/* ✅ 저장된 데이터 목록 */}
             <div style={{ marginTop: '20px', padding: '10px', background: '#222', borderRadius: '6px' }}>
-                <h3>📌 저장된 데이터</h3>
+                <h3>📌 Saved data</h3>
                 {dates.length === 0 ? (
-                    <p>저장된 데이터가 없습니다.</p>
+                    <p>No saved data.</p>
                 ) : (
                     dates
                         .slice()
@@ -519,18 +519,6 @@ export default function NotePage() {
                                     />
                                     <div style={{ display: 'flex', gap: '10px' }}>
                                         <button
-                                            onClick={() => handleMemoDelete(date)}
-                                            style={{
-                                                background: '#a00',
-                                                color: '#fff',
-                                                border: 'none',
-                                                borderRadius: '4px',
-                                                padding: '4px 8px',
-                                            }}
-                                        >
-                                            메모 삭제
-                                        </button>
-                                        <button
                                             onClick={handleMemoSave}
                                             style={{
                                                 background: '#007bff',
@@ -540,7 +528,19 @@ export default function NotePage() {
                                                 padding: '4px 8px',
                                             }}
                                         >
-                                            메모 저장
+                                            save memo
+                                        </button>
+                                        <button
+                                            onClick={() => handleMemoDelete(date)}
+                                            style={{
+                                                background: '#a00',
+                                                color: '#fff',
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                                padding: '4px 8px',
+                                            }}
+                                        >
+                                            delete memo
                                         </button>
                                     </div>
                                 </div>
